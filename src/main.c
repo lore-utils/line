@@ -33,6 +33,12 @@ static void get_line(uint64_t line_num, int fd) {
     }
     const size_t file_size = res.st_size;
 
+    /*
+     * We originally implemented this using read() calls reading 32 pages at a time.
+     * mmap was significantly faster, but in an unconventional way.
+     * The total cycle count significantly increased (10-20% by our tests).
+     * But the machines stayed at a higher clock speed, which more than offset the difference.
+     */
     unsigned char * restrict buffer = mmap(NULL, file_size, PROT_READ, MAP_PRIVATE | MAP_POPULATE, fd, 0);
 
     madvise(buffer, file_size, MADV_SEQUENTIAL);
