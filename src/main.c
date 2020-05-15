@@ -99,7 +99,7 @@ int main(int argc, char ** argv) {
             for (int i = optind; i < argc; ++i) {
                 char * endptr = 0;
                 line_num      = strtoull(argv[i], &endptr, 0);
-                if (errno == ERANGE && line_num == ULLONG_MAX || errno == EINVAL) {
+                if ((errno == ERANGE && line_num == ULLONG_MAX) || errno == EINVAL) {
                     fprintf(stderr, "Line numbers must be between 1 and %lu\n", ULONG_MAX);
                     print_help();
                 }
@@ -115,7 +115,7 @@ int main(int argc, char ** argv) {
             case ':': {
                 char * endptr = 0;
                 line_num      = strtoull(optarg, &endptr, 0);
-                if (errno == ERANGE && line_num == ULLONG_MAX || errno == EINVAL) {
+                if ((errno == ERANGE && line_num == ULLONG_MAX) || errno == EINVAL) {
                     fprintf(stderr, "Line numbers must be between 1 and %lu\n", ULONG_MAX);
                     print_help();
                 }
