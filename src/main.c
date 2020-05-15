@@ -10,6 +10,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/mman.h>
 #include <unistd.h>
 
 static void print_help(void) {
@@ -39,6 +40,9 @@ static void get_line(uint64_t line_num, const char * filename) {
     const size_t buffer_size = page_size * 32;
 
     unsigned char * restrict buffer = malloc(buffer_size);
+
+    posix_fadvise(fd, 0, 0, POSIX_FADV_SEQUENTIAL);
+    madvise(buffer, buffer_size, MADV_SEQUENTIAL);
 
     uint64_t line_count = 1;
 
