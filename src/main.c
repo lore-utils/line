@@ -34,9 +34,9 @@ static void get_line(unsigned int line_num, const char * filename) {
         return;
     }
 
-    const int64_t page_size = sysconf(_SC_PAGESIZE);
-    //TODO: Test how many pages are best
-    const size_t buffer_size = page_size;
+    const long page_size = sysconf(_SC_PAGESIZE);
+    //32 pages was best from testing
+    const size_t buffer_size = page_size * 32;
 
     unsigned char * restrict buffer = malloc(buffer_size);
 
@@ -54,18 +54,17 @@ static void get_line(unsigned int line_num, const char * filename) {
         if (ret == 0) {
             break;
         }
-        unsigned char * read_start = buffer;
-        size_t read_len            = ret;
+        unsigned char *restrict read_start = buffer;
+        size_t read_len = ret;
 
-        //Loop scope
         while (true) {
-            unsigned char * line_sep = memchr(read_start, '\n', read_len);
+            unsigned char *restrict line_sep = memchr(read_start, '\n', read_len);
             size_t line_len;
             if (line_sep == NULL) {
                 //No separator found
                 if (line_count == line_num) {
                     line_len = read_len;
-                    printf("%.*s", (int)line_len, read_start);
+                    write(STDOUT_FILENO, read_start, line_len);
                 }
                 //Actually continue on the read loop, not the line loop
                 break;
@@ -73,7 +72,7 @@ static void get_line(unsigned int line_num, const char * filename) {
                 //Line len includes the \n
                 line_len = (line_sep - read_start) + 1;
                 if (line_count == line_num) {
-                    printf("%.*s", (int)line_len, read_start);
+                    write(STDOUT_FILENO, read_start, line_len);
                     //We only currently handle single line finding
                     return;
                 }
