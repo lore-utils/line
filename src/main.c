@@ -26,59 +26,47 @@ static void print_help(void) {
 
 //Line num is 1 indexed, nobody actually asks for line 0
 static void get_line(uint64_t line_num, int fd) {
-    const long page_size = sysconf(_SC_PAGESIZE);
-    //32 pages was best from testing
-    const size_t buffer_size = page_size * 32;
+    struct stat res;
+    if (fstat(fd, &res) == -1) {
+        perror("fstat");
+        return;
+    }
+    const size_t file_size = res.st_size;
 
-    unsigned char * restrict buffer = malloc(buffer_size);
+    unsigned char * restrict buffer = mmap(NULL, file_size, PROT_READ, MAP_PRIVATE | MAP_POPULATE, fd, 0);
 
-    posix_fadvise(fd, 0, 0, POSIX_FADV_SEQUENTIAL);
-    madvise(buffer, buffer_size, MADV_SEQUENTIAL);
+    madvise(buffer, file_size, MADV_SEQUENTIAL);
 
     uint64_t line_count = 1;
 
-    while (true) {
-        ssize_t ret = read(fd, buffer, buffer_size);
-        if (ret == -1) {
-            if (errno == EINTR) {
-                continue;
-            }
-            perror("read");
-            return;
-        }
-        if (ret == 0) {
-            break;
-        }
-        unsigned char * read_start = buffer;
-        size_t read_len            = ret;
+    unsigned char *read_start = buffer;
+    size_t read_len = file_size;
 
-        while (true) {
-            unsigned char * line_sep = memchr(read_start, '\n', read_len);
-            size_t line_len;
-            if (line_sep == NULL) {
-                //No separator found
-                if (line_count == line_num) {
-                    line_len = read_len;
-                    write(STDOUT_FILENO, read_start, line_len);
-                }
-                //Actually continue on the read loop, not the line loop
-                break;
-            } else {
-                //Line len includes the \n
-                line_len = (line_sep - read_start) + 1;
-                if (line_count == line_num) {
-                    write(STDOUT_FILENO, read_start, line_len);
-                    //We only currently handle single line finding
-                    return;
-                }
-                ++line_count;
-                read_start += line_len;
-                read_len -= line_len;
+    while (true) {
+        unsigned char *line_sep = memchr(read_start, '\n', read_len);
+        size_t line_len;
+        if (line_sep == NULL) {
+            //No separator found
+            if (line_count == line_num) {
+                line_len = read_len;
+                write(STDOUT_FILENO, read_start, line_len);
             }
+            break;
+        } else {
+            //Line len includes the \n
+            line_len = (line_sep - read_start) + 1;
+            if (line_count == line_num) {
+                write(STDOUT_FILENO, read_start, line_len);
+                //We only currently handle single line finding
+                return;
+            }
+            ++line_count;
+            read_start += line_len;
+            read_len -= line_len;
         }
     }
 
-    free(buffer);
+    munmap(buffer, file_size);
     close(fd);
 }
 
