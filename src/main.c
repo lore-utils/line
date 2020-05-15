@@ -16,24 +16,15 @@ static void print_help(void) {
     fprintf(stderr,
         "line - a line util to cleanly and sanely extract line(s)\n"
         "Usage:\n"
-        "    line <OPTIONS>\n"
+        "    line <OPTIONS> MARKER...\n"
         "Options:\n"
-        "    Lorum Ipsum\n"
-        "\n"
-        "    Dolor Sit Amet\n"
-        "\n"
-        "    -[-h]elp - this message\n"
-        "Notes:\n"
-        "    Lorem Ipsum.\n");
+        "    -[l]ine MARKER - line marker explicitly\n"
+        "    -[f]ile FILE - input file. defaults to \"-\" for stdin\n"
+        "    -[-h]elp - this message\n");
 }
 
 //Line num is 1 indexed, nobody actually asks for line 0
-static void get_line(uint64_t line_num, const char * filename) {
-    int fd = open(filename, O_RDONLY | O_CLOEXEC);
-    if (fd == -1) {
-        return;
-    }
-
+static void get_line(uint64_t line_num, int fd) {
     const long page_size = sysconf(_SC_PAGESIZE);
     //32 pages was best from testing
     const size_t buffer_size = page_size * 32;
@@ -54,11 +45,11 @@ static void get_line(uint64_t line_num, const char * filename) {
         if (ret == 0) {
             break;
         }
-        unsigned char *read_start = buffer;
-        size_t read_len = ret;
+        unsigned char * read_start = buffer;
+        size_t read_len            = ret;
 
         while (true) {
-            unsigned char *line_sep = memchr(read_start, '\n', read_len);
+            unsigned char * line_sep = memchr(read_start, '\n', read_len);
             size_t line_len;
             if (line_sep == NULL) {
                 //No separator found
@@ -95,30 +86,25 @@ int main(int argc, char ** argv) {
 
     uint64_t line_num = 0;
 
-    const char * file_name = NULL;
+    const char * file_name = "-";
 
     int c;
     while (1) {
         int option_index = 0;
 
-        static struct option long_options[]
-            = {{"help", no_argument, 0, 'h'}, {"lines", required_argument, 0, 'l'},
-                {"file", required_argument, 0, 'f'}, {0, 0, 0, 0}};
+        static struct option long_options[] = {{"help", no_argument, 0, 'h'},
+            {"line", required_argument, 0, 'l'}, {"file", required_argument, 0, 'f'}, {0, 0, 0, 0}};
 
         c = getopt_long(argc, argv, "hl:f:", long_options, &option_index);
 
         if (c == -1) {
-            for (int i = optind; (file_name == NULL && i < argc - 1) || (file_name != NULL && i < argc); ++i) {
+            for (int i = optind; i < argc; ++i) {
                 char * endptr = 0;
-                line_num      = strtoul(argv[i], &endptr, 0);
-                if (errno == ERANGE && line_num == ULLONG_MAX) {
+                line_num      = strtoull(argv[i], &endptr, 0);
+                if (errno == ERANGE && line_num == ULLONG_MAX || errno == EINVAL) {
                     fprintf(stderr, "Line numbers must be between 1 and %lu\n", ULONG_MAX);
                     print_help();
                 }
-            }
-            //dont write to the file_name if it was already specified
-            if (!file_name) {
-                file_name = argv[argc - 1];
             }
             break;
         }
@@ -130,8 +116,8 @@ int main(int argc, char ** argv) {
             case 'l':
             case ':': {
                 char * endptr = 0;
-                line_num      = strtoul(optarg, &endptr, 0);
-                if (errno == ERANGE && line_num == ULLONG_MAX) {
+                line_num      = strtoull(optarg, &endptr, 0);
+                if (errno == ERANGE && line_num == ULLONG_MAX || errno == EINVAL) {
                     fprintf(stderr, "Line numbers must be between 1 and %lu\n", ULONG_MAX);
                     print_help();
                 }
@@ -143,13 +129,20 @@ int main(int argc, char ** argv) {
                 exit(EXIT_SUCCESS);
         }
     }
-    if (line_num == 0 || file_name == NULL) {
-        fprintf(stderr, "You need to specify both a line number and a file name\n");
+    if (line_num == 0) {
         print_help();
         exit(EXIT_SUCCESS);
     }
 
-    get_line(line_num, file_name);
+    int fd = STDIN_FILENO;
+    if (file_name != NULL && strcmp(file_name, "-") != 0) {
+        fd = open(file_name, O_RDONLY | O_CLOEXEC);
+        if (fd == -1) {
+            perror("open");
+            return EXIT_FAILURE;
+        }
+    }
+    get_line(line_num, fd);
 
     return EXIT_SUCCESS;
 }
