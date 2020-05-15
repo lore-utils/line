@@ -28,7 +28,7 @@ static void print_help(void) {
 }
 
 //Line num is 1 indexed, nobody actually asks for line 0
-static void get_line(unsigned int line_num, const char * filename) {
+static void get_line(uint64_t line_num, const char * filename) {
     int fd = open(filename, O_RDONLY | O_CLOEXEC);
     if (fd == -1) {
         return;
@@ -54,11 +54,11 @@ static void get_line(unsigned int line_num, const char * filename) {
         if (ret == 0) {
             break;
         }
-        unsigned char *restrict read_start = buffer;
+        unsigned char *read_start = buffer;
         size_t read_len = ret;
 
         while (true) {
-            unsigned char *restrict line_sep = memchr(read_start, '\n', read_len);
+            unsigned char *line_sep = memchr(read_start, '\n', read_len);
             size_t line_len;
             if (line_sep == NULL) {
                 //No separator found
