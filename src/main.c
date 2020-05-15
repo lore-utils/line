@@ -1,12 +1,15 @@
-#include <stdio.h>
-#include <string.h>
-#include <stddef.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <getopt.h>
-#include <sys/types.h>
-#include <sys/stat.h>
+#include <errno.h>
 #include <fcntl.h>
+#include <getopt.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 static void print_help(void) {
     printf("line - a line util to cleanly and sanely extract line(s)\n"
@@ -22,20 +25,65 @@ static void print_help(void) {
            "    Lorem Ipsum.\n");
 }
 
+//Line num is 1 indexed, nobody actually asks for line 0
 static void get_line(unsigned int line_num, const char *filename) {
     int fd = open(filename, O_RDONLY | O_CLOEXEC);
     if (fd == -1) {
         return;
     }
 
-    struct stat res;
-    if (fstat(fd, &res) == -1) {
-        perror("lstat");
-        return;
+    const long page_size = sysconf(_SC_PAGESIZE);
+    //TODO: Test how many pages are best
+    const size_t buffer_size = page_size;
+
+    unsigned char *restrict buffer = malloc(buffer_size);
+
+    unsigned long long line_count = 1;
+
+    while (true) {
+        ssize_t ret = read(fd, buffer, buffer_size);
+        if (ret == -1) {
+            if (errno == EINTR) {
+                continue;
+            }
+            perror("read");
+            return;
+        }
+        if (ret == 0) {
+            break;
+        }
+        unsigned char *read_start = buffer;
+        size_t read_len = ret;
+
+        //Loop scope
+        while (true) {
+            unsigned char *line_sep = memchr(read_start, '\n', read_len);
+            size_t line_len;
+            if (line_sep == NULL) {
+                //No separator found
+                if (line_count == line_num) {
+                    line_len = read_len;
+                    printf("%.*s", (int) line_len, read_start);
+                }
+                //Actually continue on the read loop, not the line loop
+                break;
+            } else {
+                //Line len includes the \n
+                line_len = (line_sep - read_start) + 1;
+                if (line_count == line_num) {
+                    printf("%.*s", (int) line_len, read_start);
+                    //We only currently handle single line finding
+                    return;
+                }
+                ++line_count;
+                read_start += line_len;
+                read_len -= line_len;
+            }
+        }
     }
 
-    unsigned char *file_data = mmap(NULL, len, PROT_READ, MAP_PRIVATE, fd, 0);
-
+    free(buffer);
+    close(fd);
 }
 
 int main(int argc, char **argv) {
@@ -52,10 +100,8 @@ int main(int argc, char **argv) {
         int option_index = 0;
 
         static struct option long_options[]
-            = {{"help", no_argument, 0, 'h'},
-               {"lines", required_argument, 0, 'l'},
-               {"file", required_argument, 0, 'f'},
-               {0, 0, 0, 0}};
+                = {{"help", no_argument, 0, 'h'}, {"lines", required_argument, 0, 'l'},
+                        {"file", required_argument, 0, 'f'}, {0, 0, 0, 0}};
 
         c = getopt_long(argc, argv, "?hl:f:", long_options, &option_index);
         if (c == -1)
@@ -74,7 +120,13 @@ int main(int argc, char **argv) {
                 exit(EXIT_SUCCESS);
         }
     }
+    if (line_num == 0 || filename == NULL) {
+        printf("You need to specify both a line number and a filename\n");
+        print_help();
+        exit(EXIT_SUCCESS);
+    }
+
+    get_line(line_num, filename);
 
     return EXIT_SUCCESS;
 }
-
