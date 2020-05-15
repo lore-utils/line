@@ -17,6 +17,8 @@ set(CMAKE_C_STANDARD 99)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}")
 
 add_definitions(-D_POSIX_C_SOURCE=200809L)
+#Needed for madvise
+add_definitions(-D_DEFAULT_SOURCE)
 
 SET(MAIN
     "src/main.c"
