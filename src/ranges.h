@@ -20,9 +20,11 @@ typedef struct condition_set_t {
 
 void init_condition_set(condition_set_t * set);
 void close_condition_set(condition_set_t * set);
+
 static inline bool conditions_remaining(const condition_set_t * set) {
     return set->index < set->size;
 }
+
 bool line_match(condition_set_t * set, uint64_t line);
 int condition_sort(const void * lhs, const void * rhs);
 

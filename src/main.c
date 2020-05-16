@@ -48,14 +48,23 @@ int main(int argc, char ** argv) {
                 switch (arg_type(argv[i])) {
                     case 's':
                     case 'l':
-                        extract_list(argv[i], &set);
+                        if (extract_list(argv[i], &set)) {
+                            print_help();
+                            exit(EXIT_FAILURE);
+                        }
                         break;
                     case 'r':
-                        extract_range(argv[i], &set);
+                        if (extract_range(argv[i], &set)) {
+                            print_help();
+                            exit(EXIT_FAILURE);
+                        }
                         break;
                     case '\0':
                     default:
                         fprintf(stderr, "Unable to parse line argument '%s'\n", argv[i]);
+                        print_help();
+                        exit(EXIT_FAILURE);
+                        break;
                 }
             }
             break;
@@ -70,14 +79,23 @@ int main(int argc, char ** argv) {
                 switch (arg_type(optarg)) {
                     case 's':
                     case 'l':
-                        extract_list(optarg, &set);
+                        if (extract_list(optarg, &set)) {
+                            print_help();
+                            exit(EXIT_FAILURE);
+                        }
                         break;
                     case 'r':
-                        extract_range(optarg, &set);
+                        if (extract_range(optarg, &set)) {
+                            print_help();
+                            exit(EXIT_FAILURE);
+                        }
                         break;
                     case '\0':
                     default:
                         fprintf(stderr, "Unable to parse line argument '%s'\n", optarg);
+                        print_help();
+                        exit(EXIT_FAILURE);
+                        break;
                 }
                 break;
             case 'h':
@@ -86,7 +104,8 @@ int main(int argc, char ** argv) {
                 exit(EXIT_SUCCESS);
         }
     }
-    if (set.size == 0) { //no conditions set
+    //no conditions set
+    if (set.size == 0) {
         print_help();
         exit(EXIT_SUCCESS);
     }
@@ -96,7 +115,7 @@ int main(int argc, char ** argv) {
         fd = open(file_name, O_RDONLY | O_CLOEXEC);
         if (fd == -1) {
             perror("open");
-            return EXIT_FAILURE;
+            exit(EXIT_FAILURE);
         }
     } else {
         fprintf(stderr, "stdin not yet supported!\n");

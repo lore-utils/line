@@ -7,18 +7,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-//printf("%c s 12\n", arg_type("12"));
-//printf("%c r 12-17\n", arg_type("12-17"));
-//printf("%c e 12-17-\n", arg_type("12-17-"));
-//printf("%c e 12-17-12\n", arg_type("12-17-12"));
-//printf("%c e -12\n", arg_type("-12"));
-//printf("%c e 12-\n", arg_type("12-"));
-//printf("%c l 12,17\n", arg_type("12,17"));
-//printf("%c l 12,15,17\n", arg_type("12,15,17"));
-//printf("%c e ,12\n", arg_type(",12"));
-//printf("%c e 12,\n", arg_type("12,"));
-//printf("%c e a\n", arg_type("a"));
-//printf("%c e 12,15,17-20\n", arg_type("12,15,17-20"));
 char arg_type(const char * arg) {
     char type = 's';
 
@@ -70,7 +58,7 @@ void close_condition_set(condition_set_t * set) {
 }
 
 bool line_match(struct condition_set_t * set, uint64_t line) {
-    if (set->index == set->size) {
+    if (set->index >= set->size) {
         return false;
     }
 
@@ -162,12 +150,16 @@ bool extract_range(const char * arg, condition_set_t * set) {
 
     endptr = NULL;
     const uint64_t end = strtoull(index, &endptr, 0);
-    if (start == 0) {
+    if (end == 0) {
         fprintf(stderr, "Line numbers must be valid integers\n");
         return 1;
     }
     if ((errno == ERANGE && end == ULLONG_MAX) || errno == EINVAL) {
         fprintf(stderr, "Line numbers must be between 1 and %llu\n", ULLONG_MAX);
+        return 1;
+    }
+    if (start > end) {
+        fprintf(stderr, "Line range must be valid!\n");
         return 1;
     }
 
