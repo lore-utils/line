@@ -38,9 +38,6 @@ void file_get_lines(int fd, condition_set_t * set) {
     unsigned char * read_start = buffer;
     size_t read_len = file_size;
 
-    //make sure to actually start at the start of the options
-    set->index = 0;
-
     while (conditions_remaining(set)) {
         unsigned char * line_sep = memchr(read_start, '\n', read_len);
         size_t line_len;
@@ -65,5 +62,68 @@ void file_get_lines(int fd, condition_set_t * set) {
     }
 
     munmap(buffer, file_size);
+    close(fd);
+}
+
+void buff_get_lines(int fd, condition_set_t * set) {
+    const long page_size = sysconf(_SC_PAGESIZE);
+    //32 pages was best from testing
+    const size_t buffer_size = page_size * 32;
+
+    unsigned char * restrict buffer = malloc(buffer_size);
+
+    posix_fadvise(fd, 0, 0, POSIX_FADV_SEQUENTIAL);
+    madvise(buffer, buffer_size, MADV_SEQUENTIAL);
+
+    uint64_t line_count = 1;
+
+    while (true) {
+        ssize_t ret = read(fd, buffer, buffer_size);
+        if (ret == -1) {
+            if (errno == EINTR) {
+                continue;
+            }
+            perror("read");
+            return;
+        }
+        if (ret == 0) {
+            break;
+        }
+        unsigned char * read_start = buffer;
+        size_t read_len = ret;
+
+        while (true) {
+            unsigned char * line_sep = memchr(read_start, '\n', read_len);
+            size_t line_len;
+            if (line_sep == NULL) {
+                //No separator found
+                if (line_match(set, line_count)) {
+                    line_len = read_len;
+                    write(STDOUT_FILENO, read_start, line_len);
+                    if (!conditions_remaining(set)) {
+                        goto cleanup;
+                    }
+                }
+                //Actually continue on the read loop, not the line loop
+                break;
+            } else {
+                //Line len includes the \n
+                line_len = (line_sep - read_start) + 1;
+                if (line_match(set, line_count)) {
+                    write(STDOUT_FILENO, read_start, line_len);
+                    if (!conditions_remaining(set)) {
+                        goto cleanup;
+                    }
+                }
+
+                ++line_count;
+                read_start += line_len;
+                read_len -= line_len;
+            }
+        }
+    }
+cleanup:
+
+    free(buffer);
     close(fd);
 }

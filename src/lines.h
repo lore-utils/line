@@ -6,3 +6,4 @@
 #include "ranges.h"
 
 void file_get_lines(int fd, condition_set_t * set);
+void buff_get_lines(int fd, condition_set_t * set);

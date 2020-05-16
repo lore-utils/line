@@ -110,25 +110,27 @@ int main(int argc, char ** argv) {
         exit(EXIT_SUCCESS);
     }
 
-    int fd = STDIN_FILENO;
-    if (file_name != NULL && strcmp(file_name, "-") != 0) {
-        fd = open(file_name, O_RDONLY | O_CLOEXEC);
-        if (fd == -1) {
-            perror("open");
-            exit(EXIT_FAILURE);
-        }
-    } else {
-        fprintf(stderr, "stdin not yet supported!\n");
-        exit(EXIT_FAILURE);
-    }
-
+    //make sure to actually start at the start of the options
+    set.index = 0;
 
     qsort(set.conditions, set.size, sizeof(condition_t), condition_sort);
     //TODO eliminate any lines that fall inside of ranges. they will break everything
 
     //Same algorithm as C++ std::unique
     //May be worth doing a custom mergesort to do it in 1 iteration, plus inlining is nice
-    file_get_lines(fd, &set);
+
+    int fd = STDIN_FILENO;
+    if (strcmp(file_name, "-") != 0) {
+        fd = open(file_name, O_RDONLY | O_CLOEXEC);
+        if (fd == -1) {
+            perror("open");
+            exit(EXIT_FAILURE);
+        }
+        file_get_lines(fd, &set);
+    } else {
+        //stdin cant be mmaped :c
+        buff_get_lines(fd, &set);
+    }
 
     close_condition_set(&set);
 
