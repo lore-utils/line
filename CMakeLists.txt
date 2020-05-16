@@ -22,6 +22,8 @@ add_definitions(-D_DEFAULT_SOURCE)
 
 SET(MAIN
     "src/main.c"
+    "src/ranges.c"
+    "src/lines.c"
     )
 
 add_executable(line ${MAIN})
