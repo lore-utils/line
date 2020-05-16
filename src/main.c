@@ -44,6 +44,9 @@ static void get_line(int fd, const uint64_t *restrict line_numbers, size_t targe
      * mmap was significantly faster, but in an unconventional way.
      * The total cycle count significantly increased (10-20% by our tests).
      * But the machines stayed at a higher clock speed, which more than offset the difference.
+     *
+     * Mmap is broken for regular stdin, but not redirection
+     * Either way, we should probably get a separate implemention using read() for STDIN_FILENO
      */
     unsigned char *restrict buffer
             = mmap(NULL, file_size, PROT_READ, MAP_PRIVATE | MAP_POPULATE, fd, 0);
