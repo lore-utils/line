@@ -26,7 +26,30 @@ static inline bool conditions_remaining(const condition_set_t * set) {
     return set->index < set->size;
 }
 
-bool line_match(condition_set_t * set, uint64_t line);
+static inline bool line_match(condition_set_t * set, uint64_t line) {
+    if (set->index == set->size) {
+        return false;
+    }
+
+    if (set->conditions[set->index].type == 's') {
+        if (set->conditions[set->index].start == line) {
+            ++(set->index);
+            return true;
+        }
+        return false;
+    }
+
+    if (set->conditions[set->index].start > line) {
+        return false;
+    }
+
+    if (set->conditions[set->index].end == line) {
+        ++(set->index);
+    }
+
+    return true;
+}
+
 int condition_sort(const void * lhs, const void * rhs);
 
 //'s'ingle

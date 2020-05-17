@@ -57,30 +57,6 @@ void close_condition_set(condition_set_t * set) {
     }
 }
 
-bool line_match(struct condition_set_t * set, uint64_t line) {
-    if (set->index >= set->size) {
-        return false;
-    }
-
-    if (set->conditions[set->index].type == 's') {
-        if (set->conditions[set->index].start == line) {
-            ++(set->index);
-            return true;
-        }
-        return false;
-    }
-
-    if (set->conditions[set->index].start > line) {
-        return false;
-    }
-
-    if (set->conditions[set->index].end == line) {
-        ++(set->index);
-    }
-
-    return true;
-}
-
 static inline void resize_set(condition_set_t * set, size_t addition) {
     set->size += addition;
     if (set->conditions) {

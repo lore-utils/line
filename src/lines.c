@@ -38,6 +38,9 @@ void file_get_lines(int fd, condition_set_t * set) {
     unsigned char * read_start = buffer;
     size_t read_len = file_size;
 
+    unsigned char * batch_start = NULL;
+    size_t batch_len = 0;
+
     while (conditions_remaining(set)) {
         unsigned char * line_sep = memchr(read_start, '\n', read_len);
         size_t line_len;
@@ -45,7 +48,17 @@ void file_get_lines(int fd, condition_set_t * set) {
             //No separator found
             if (line_match(set, line_count)) {
                 line_len = read_len;
-                write(STDOUT_FILENO, read_start, line_len);
+                if (batch_len) {
+                    batch_len += line_len;
+                } else {
+                    batch_start = read_start;
+                    batch_len = line_len;
+                }
+            } else {
+                if (batch_len) {
+                    write(STDOUT_FILENO, batch_start, batch_len);
+                    batch_len = 0;
+                }
             }
             //EOF
             break;
@@ -53,12 +66,26 @@ void file_get_lines(int fd, condition_set_t * set) {
             //Line len includes the \n
             line_len = (line_sep - read_start) + 1;
             if (line_match(set, line_count)) {
-                write(STDOUT_FILENO, read_start, line_len);
+                if (batch_len) {
+                    batch_len += line_len;
+                } else {
+                    batch_start = read_start;
+                    batch_len = line_len;
+                }
+            } else {
+                if (batch_len) {
+                    write(STDOUT_FILENO, batch_start, batch_len);
+                    batch_len = 0;
+                }
             }
             ++line_count;
             read_start += line_len;
             read_len -= line_len;
         }
+    }
+    //conditions went right to the end
+    if (batch_len) {
+        write(STDOUT_FILENO, batch_start, batch_len);
     }
 
     munmap(buffer, file_size);
@@ -72,6 +99,12 @@ void buff_get_lines(int fd, condition_set_t * set) {
 
     unsigned char * restrict buffer = malloc(buffer_size);
 
+    //dont buffer, we got this
+    //worse unless we can batch it for stdin
+    //setvbuf(stdin, NULL, _IONBF, 0);
+    //setvbuf(stdout, NULL, _IONBF, 0);
+
+    //for some reason the already sequential stdin benifits from this
     posix_fadvise(fd, 0, 0, POSIX_FADV_SEQUENTIAL);
     madvise(buffer, buffer_size, MADV_SEQUENTIAL);
 
@@ -80,6 +113,7 @@ void buff_get_lines(int fd, condition_set_t * set) {
     unsigned char * read_start = NULL;
     size_t read_len = 0;
     size_t line_len = 0;
+
     while (true) {
         ssize_t ret = read(fd, buffer, buffer_size);
         if (ret == -1) {
