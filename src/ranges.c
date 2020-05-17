@@ -63,14 +63,14 @@ static inline void resize_set(condition_set_t * set, size_t addition) {
         condition_t * temp = realloc(set->conditions, sizeof(condition_t) * (set->size));
         if (!temp) {
             perror("realloc");
-            exit(1);
+            exit(EXIT_FAILURE);
         }
         set->conditions = temp;
     } else {
         set->conditions = malloc(sizeof(condition_t) * (set->size));
         if (!set->conditions) {
             perror("malloc");
-            exit(1);
+            exit(EXIT_FAILURE);
         }
     }
 }

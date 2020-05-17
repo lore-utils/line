@@ -30,6 +30,7 @@ static void print_help(void) {
         );
 }
 
+//TODO: Optimize for single line argument handling (no malloc, no fancy arg parsing, no complicated line iteration, etc)
 int main(int argc, char ** argv) {
     if (argc == 1) {
         print_help();
