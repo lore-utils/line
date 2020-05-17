@@ -171,8 +171,99 @@ bool extract_range(const char * arg, condition_set_t * set) {
     return 0;
 }
 
+/*
+ * Sorts the list of conditions
+ * Conditions are compared as follows:
+ * If single, compare start values
+ * If range, compare start and end values
+ * If mixed, ranges before single
+ */
 int condition_sort(const void * lhs, const void * rhs) {
     const condition_t l = *(const condition_t *)lhs;
     const condition_t r = *(const condition_t *)rhs;
-    return l.start > r.start;
+
+    if (l.start == r.start) {
+        if (l.type == 's' && r.type == 's') {
+            return 0;
+        } else if (l.type == 'r' && r.type == 'r') {
+            if (l.end < r.end) {
+                return -1;
+            } else if (l.end > r.end) {
+                return 1;
+            } else {
+                return 0;
+            }
+        } else if (l.type == 'r') {
+            return -1;
+        } else {
+            return 1;
+        }
+    } else {
+        if (l.start < r.start) {
+            return -1;
+        } else {
+            return 1;
+        }
+    }
+}
+
+static inline bool is_duplicate(condition_t *l, condition_t *r) {
+    if (l->start == r->start) {
+        if (l->type == 's' && r->type == 's') {
+            //Two identical singles
+            return true;
+        } else if (l->type == 'r' && r->type == 'r') {
+            //Two cases: 5-10,5-6 and 5-6,5-10
+            if (r->end > l->end) {
+                //Handles the 5-6,5-10 case
+                l->end = r->end;
+            }
+            //Either way, absorb the smaller range
+            return true;
+        } else {
+            //Ranges come first, and absorb the single
+            return true;
+        }
+    } else if (l->type == 'r' && r->type == 'r') {
+        //Handles 2-4,3-7
+        if (l->end >= r->start) {
+            l->end = r->end;
+            return true;
+            //Handles 2-4,5-7
+        } else if ((l->end + 1) == r->start) {
+            l->end = r->end;
+            return true;
+        }
+    } else if (l->type != r->type) {
+        if (l->type == 'r') {
+            //Range vs single
+            if (l->end >= r->start) {
+                //Handles 2-10,3
+                return true;
+            }
+        } else {
+            //Single vs range
+            //Range start is after the single
+            //DO NOTHING
+        }
+    }
+    return false;
+}
+
+//Same algorithm as C++ std::unique
+//May be worth doing a custom mergesort to do it in 1 iteration, plus inlining is nice
+void consolidate_conditions(condition_set_t *set) {
+    if (set == NULL || set->size <= 1 || set->conditions == NULL) {
+        return;
+    }
+
+    condition_t *head = set->conditions;
+    for (size_t i = 1; i < set->size; ++i) {
+        condition_t *iter = &set->conditions[i];
+        if (!is_duplicate(head, iter) && ++head != iter) {
+            *head = *iter;
+        }
+    }
+    ++head;
+    set->size -= (set->size - (head - set->conditions));
 }

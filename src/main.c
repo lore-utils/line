@@ -23,7 +23,6 @@ static void print_help(void) {
         "    -[-h]elp - this message\n");
 }
 
-//Line num is 1 indexed, nobody actually asks for line 0
 int main(int argc, char ** argv) {
     if (argc == 1) {
         print_help();
@@ -114,10 +113,8 @@ int main(int argc, char ** argv) {
     set.index = 0;
 
     qsort(set.conditions, set.size, sizeof(condition_t), condition_sort);
-    //TODO eliminate any lines that fall inside of ranges. they will break everything
 
-    //Same algorithm as C++ std::unique
-    //May be worth doing a custom mergesort to do it in 1 iteration, plus inlining is nice
+    consolidate_conditions(&set);
 
     int fd = STDIN_FILENO;
     if (strcmp(file_name, "-") != 0) {

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stdlib.h>
 #include <stdint.h>
 
 //hahaha just _try_ and stop me posix, the _t is mine!
@@ -13,8 +14,8 @@ typedef struct condition_t {
 } condition_t;
 
 typedef struct condition_set_t {
-    uint64_t index;
-    uint64_t size;
+    size_t index;
+    size_t size;
     condition_t * conditions;
 } condition_set_t;
 
@@ -37,3 +38,5 @@ char arg_type(const char * arg);
 bool extract_list(const char * arg, condition_set_t * set);
 
 bool extract_range(const char * arg, condition_set_t * set);
+
+void consolidate_conditions(condition_set_t *set);
