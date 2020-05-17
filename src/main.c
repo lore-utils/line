@@ -19,8 +19,15 @@ static void print_help(void) {
         "    line <OPTIONS> MARKER...\n"
         "Options:\n"
         "    -[-l]ine MARKER - line marker explicitly\n"
+        "       range: <#>-<#>        - 4-10\n"
+        "       list: <#>,<#>,<#>,... - 1,2,3\n"
+        "       single: <#>           - 8\n"
         "    -[-f]ile FILE - input file. defaults to \"-\" for stdin\n"
-        "    -[-h]elp - this message\n");
+        "    -[-h]elp - this message\n"
+        "Examples:\n"
+        "   line 1 2,5,7 440-1000\n"
+        "   line -l 500-1000 -f /path/to/file\n"
+        );
 }
 
 int main(int argc, char ** argv) {
