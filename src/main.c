@@ -120,9 +120,10 @@ int main(int argc, char ** argv) {
     //make sure to actually start at the start of the options
     set.index = 0;
 
-    qsort(set.conditions, set.size, sizeof(condition_t), condition_sort);
-
-    consolidate_conditions(&set);
+    if (set.size > 1) {
+        qsort(set.conditions, set.size, sizeof(condition_t), condition_sort);
+        consolidate_conditions(&set);
+    }
 
     int fd = STDIN_FILENO;
     if (strcmp(file_name, "-") != 0) {
@@ -131,6 +132,7 @@ int main(int argc, char ** argv) {
             perror("open");
             exit(EXIT_FAILURE);
         }
+        //TODO mmap on anything less than the size of a default read size isnt worth it (and is three orders of magnitude slower)
         file_get_lines(fd, &set);
     } else {
         //stdin cant be mmaped :c
