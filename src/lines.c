@@ -135,6 +135,8 @@ void buff_get_lines(int fd, condition_set_t * set) {
             }
             break;
         }
+        unsigned char * batch_start = NULL;
+        size_t batch_len = 0;
 
         read_start = buffer;
         read_len = ret;
@@ -143,14 +145,30 @@ void buff_get_lines(int fd, condition_set_t * set) {
             unsigned char * line_sep = memchr(read_start, '\n', read_len);
             if (line_sep == NULL) {
                 line_len = read_len;
+                if (batch_len) {
+                    write(STDOUT_FILENO, batch_start, batch_len);
+                }
                 break;
             } else {
                 //Line len includes the \n
                 line_len = (line_sep - read_start) + 1;
                 if (line_match(set, line_count)) {
-                    write(STDOUT_FILENO, read_start, line_len);
+                    if (batch_len) {
+                        batch_len += line_len;
+                    } else {
+                        batch_start = read_start;
+                        batch_len = line_len;
+                    }
                     if (!conditions_remaining(set)) {
+                        if (batch_len) {
+                            write(STDOUT_FILENO, batch_start, batch_len);
+                        }
                         goto cleanup;
+                    }
+                } else {
+                    if (batch_len) {
+                        write(STDOUT_FILENO, batch_start, batch_len);
+                        batch_len = 0;
                     }
                 }
 
