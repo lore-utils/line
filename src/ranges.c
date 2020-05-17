@@ -201,9 +201,12 @@ static inline bool is_duplicate(condition_t *l, condition_t *r) {
             return true;
         }
     } else if (l->type == 'r' && r->type == 'r') {
-        //Handles 2-4,3-7
+        //Handles 2-4,3-7 and 2-40,3-7
         if (l->end >= r->start) {
-            l->end = r->end;
+            if (l->end < r->end) {
+                //Handles 2-5,3-7
+                l->end = r->end;
+            }
             return true;
             //Handles 2-4,5-7
         } else if ((l->end + 1) == r->start) {
