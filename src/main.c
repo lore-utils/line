@@ -132,12 +132,9 @@ int main(int argc, char ** argv) {
             perror("open");
             exit(EXIT_FAILURE);
         }
-        //TODO mmap on anything less than the size of a default read size isnt worth it (and is three orders of magnitude slower)
-        file_get_lines(fd, &set);
-    } else {
-        //stdin cant be mmaped :c
-        buff_get_lines(fd, &set);
     }
+    //if its stdin that isnt a redirection it will automatically call read
+    file_get_lines(fd, &set);
 
     close_condition_set(&set);
 

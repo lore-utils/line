@@ -11,6 +11,13 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+static inline size_t optimal_buffersize() {
+    const long page_size = sysconf(_SC_PAGESIZE);
+    //32 pages was best from testing
+    const size_t buffer_size = page_size * 32;
+    return buffer_size;
+}
+
 void file_get_lines(int fd, condition_set_t * set) {
     struct stat res;
     if (fstat(fd, &res) == -1) {
@@ -18,6 +25,13 @@ void file_get_lines(int fd, condition_set_t * set) {
         return;
     }
     const size_t file_size = res.st_size;
+    const size_t buffer_size = optimal_buffersize();
+
+    //the cost of mmap for small files is more expensive than just using a read call
+    if (file_size <= buffer_size) {
+        read_get_lines(fd, set);
+        return;
+    }
 
     /*
      * We originally implemented this using read() calls reading 32 pages at a time.
@@ -92,10 +106,8 @@ void file_get_lines(int fd, condition_set_t * set) {
     close(fd);
 }
 
-void buff_get_lines(int fd, condition_set_t * set) {
-    const long page_size = sysconf(_SC_PAGESIZE);
-    //32 pages was best from testing
-    const size_t buffer_size = page_size * 32;
+void read_get_lines(int fd, condition_set_t * set) {
+    const size_t buffer_size = optimal_buffersize();
 
     unsigned char * restrict buffer = malloc(buffer_size);
 
